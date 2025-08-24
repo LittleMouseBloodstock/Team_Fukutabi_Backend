@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,7 +27,6 @@ jobs:
           echo "PWD=$(pwd)"
           echo "Top-level files:" && ls -la || true
           echo "backend files:" && ls -la backend || true
-
           if [ -f requirements.txt ]; then
             echo "-> using ./requirements.txt"
             pip install -r requirements.txt
@@ -39,25 +37,23 @@ jobs:
             echo "requirements.txt not found at ./ or ./backend"
             exit 1
           fi
-
-      # （任意）テストをここに追加できます
-
-      # backend ディレクトリのみをアーティファクト化して軽量デプロイ
-      - name: Upload artifact for deployment jobs
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-app
-          path: backend
+      # ※ ここでpytest等を走らせたい場合はこの下に追記
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-
+    permissions:
+      contents: read
     steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: python-app
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show tree before deploy (debug)
+        run: |
+          echo "PWD=$(pwd)"
+          ls -la
+          echo "---- backend ----"
+          ls -la backend || true
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -65,5 +61,5 @@ jobs:
           app-name: "app-002-gen10-step3-2-py-oshima9"
           slot-name: "Production"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_32DCBC11FA764CD5A832E64BEA3D77BF }}
-          package: ./python-app   # ← backend のみを送る
+          package: ./backend   # ← backend ディレクトリをそのまま送る
 
