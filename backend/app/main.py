@@ -2,6 +2,8 @@
 from dotenv import load_dotenv
 import pathlib
 import os
+
+import app.services.google_adc_bootstrap  # ← 追加行：これでADCを自動ブートストラップ
 # backend/.env を明示的に読み込む
 env_path = pathlib.Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
