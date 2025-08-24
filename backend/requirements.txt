@@ -15,3 +15,4 @@ google-auth-httplib2
 google-cloud-storage
 # 末尾に追加（Pinned 推奨）
 openai==1.51.2
+gunicorn
