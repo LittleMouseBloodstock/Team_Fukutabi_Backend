@@ -1,0 +1,11 @@
+fastapi==0.110.0
+uvicorn[standard]==0.29.0
+SQLAlchemy==2.0.29
+PyMySQL==1.1.1
+pydantic==2.6.3
+httpx==0.27.0          # AI/外部APIで非同期なら async クライアント使用
+python-dotenv==1.0.1
+# （必要なら）python-multipart, passlib[bcrypt], email-validator
+bcrypt>=4.0.1
+google-cloud-texttospeech==2.27.0
+anyio
