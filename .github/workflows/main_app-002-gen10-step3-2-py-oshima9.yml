@@ -1,4 +1,4 @@
-# Docs: https://github.com/Azure/webapps-deploy
+# Deploy Python FastAPI (backend/) to Azure Web App
 name: Build and deploy Python app to Azure Web App - app-002-gen10-step3-2-py-oshima9
 
 on:
@@ -15,29 +15,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies (auto-detect requirements.txt)
+      # ★ CI上では依存インストールしない（Oryxがサーバ側でやる）
+      #   代わりに backend/requirements.txt の存在だけ保証する
+      - name: Ensure backend/requirements.txt exists (copy if root-only)
         run: |
-          set -e
-          python -m pip install --upgrade pip
-          echo "PWD=$(pwd)"
-          echo "Top-level files:" && ls -la || true
-          echo "backend files:" && ls -la backend || true
-          if [ -f requirements.txt ]; then
-            echo "-> using ./requirements.txt"
-            pip install -r requirements.txt
-          elif [ -f backend/requirements.txt ]; then
-            echo "-> using backend/requirements.txt"
-            pip install -r backend/requirements.txt
-          else
-            echo "requirements.txt not found at ./ or ./backend"
-            exit 1
+          if [ ! -f backend/requirements.txt ] && [ -f requirements.txt ]; then
+            echo "Copying ./requirements.txt -> backend/requirements.txt"
+            cp requirements.txt backend/requirements.txt
           fi
-      # ※ ここでpytest等を走らせたい場合はこの下に追記
+          echo "Show backend tree:"
+          ls -la backend
 
   deploy:
     runs-on: ubuntu-latest
@@ -54,6 +41,7 @@ jobs:
           ls -la
           echo "---- backend ----"
           ls -la backend || true
+          test -f backend/requirements.txt || (echo "ERROR: backend/requirements.txt missing" && exit 1)
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -61,5 +49,7 @@ jobs:
           app-name: "app-002-gen10-step3-2-py-oshima9"
           slot-name: "Production"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_32DCBC11FA764CD5A832E64BEA3D77BF }}
-          package: ./backend   # ← backend ディレクトリをそのまま送る
+          package: ./backend
+
+
 
