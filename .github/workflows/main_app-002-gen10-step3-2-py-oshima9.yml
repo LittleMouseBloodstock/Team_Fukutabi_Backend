@@ -58,7 +58,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-app
-          path: .
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -67,3 +66,4 @@ jobs:
           slot-name: "Production"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_32DCBC11FA764CD5A832E64BEA3D77BF }}
           package: ./python-app   # ← backend のみを送る
+
