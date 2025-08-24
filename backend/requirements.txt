@@ -9,3 +9,7 @@ python-dotenv==1.0.1
 bcrypt>=4.0.1
 google-cloud-texttospeech==2.27.0
 anyio
+google-api-python-client
+google-auth
+google-auth-httplib2
+google-cloud-storage
