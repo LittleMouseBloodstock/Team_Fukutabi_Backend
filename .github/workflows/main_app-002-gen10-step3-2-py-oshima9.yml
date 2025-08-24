@@ -50,6 +50,12 @@ jobs:
           slot-name: "Production"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_32DCBC11FA764CD5A832E64BEA3D77BF }}
           package: ./backend
+          startup-command: >
+            gunicorn --chdir backend
+            -k uvicorn.workers.UvicornWorker
+            -w 2 -b 0.0.0.0:8000
+            app.main:app --timeout 600
+
 
 
 
