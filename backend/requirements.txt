@@ -16,7 +16,7 @@ requests==2.32.3
 
 # --- Auth / Forms (使っていれば必須) ---
 passlib[bcrypt]==1.7.4       # ← ここが重要！素の passlib ではなく [bcrypt]
-bcrypt==4.2.0                # 念のため明示
+bcrypt==3.2.2              # 念のため明示
 python-jose[cryptography]==3.3.0
 email-validator==2.2.0
 python-multipart==0.0.12
