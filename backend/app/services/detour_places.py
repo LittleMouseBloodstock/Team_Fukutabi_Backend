@@ -5,12 +5,24 @@ import httpx
 from typing import List, Optional
 from app.schemas.detour import DetourSuggestion, TravelMode, DetourType
 
-GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
+GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY") or os.getenv("GOOGLE_MAPS_API_KEY")
 BASE_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 
 def minutes_to_distance_km(minutes: int, mode: TravelMode) -> float:
     speed_kmh = 4.5 if mode == "walk" else 40.0
     return (minutes / 60) * speed_kmh
+
+def _photo_url_from_place(place: dict, maxw: int = 400) -> Optional[str]:
+    photos = place.get("photos") or []
+    if not photos or not GOOGLE_PLACES_API_KEY:
+        return None
+    ref = (photos[0] or {}).get("photo_reference")
+    if not ref:
+        return None
+    return (
+        "https://maps.googleapis.com/maps/api/place/photo"
+        f"?maxwidth={maxw}&photoreference={ref}&key={GOOGLE_PLACES_API_KEY}"
+    )
 
 async def search_detour_places(
     lat: float,
@@ -48,6 +60,7 @@ async def search_detour_places(
 
     suggestions = []
     for place in data.get("results", []):
+        photo_url = _photo_url_from_place(place)
         suggestions.append(
             DetourSuggestion(
                 name=place["name"],
