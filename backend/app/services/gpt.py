@@ -29,12 +29,9 @@ def _compose_prompt(
 
     audience = ""
     if user:
-        age = user.get("age")
+        age_group = user.get("age_group")
         gender = user.get("gender")
-        interests = user.get("interests")
-        if isinstance(interests, (list, tuple)):
-            interests = "、".join([str(x) for x in interests])
-        audience = f"\n- 想定読者: 年齢={age}, 性別={gender}, 興味={interests}"
+        audience = f"\n- 想定読者: 年齢={age_group}, 性別={gender}"
 
     return (
         "あなたは観光ガイドです。"
@@ -45,21 +42,6 @@ def _compose_prompt(
         f"- 参考情報（出力には含めない）: 住所={address}, 座標=({lat}, {lng})\n"
         f"{audience}"
 )
-
-# # ---- 旧API互換（必要なら残す）----
-# def generate_guide(name: str, address: str, age: int, gender: str, interests: list[str]) -> str:
-#     interests_str = "、".join(interests)
-#     prompt = (
-#         "あなたは観光ガイドです。"
-#         f"{age}歳の{gender}向けに、興味が「{interests_str}」であることを考慮して、"
-#         f"{name}（所在地：{address}）を楽しく300文字程度で紹介してください。"
-#     )
-#     resp = client.chat.completions.create(
-#         model=MODEL_TEXT,
-#         messages=[{"role": "user", "content": prompt}],
-#         temperature=0.8,
-#     )
-#     return (resp.choices[0].message.content or "").strip()
 
 # ---- visits.py から await で呼ばれるエントリ ----
 async def generate_guide_text(

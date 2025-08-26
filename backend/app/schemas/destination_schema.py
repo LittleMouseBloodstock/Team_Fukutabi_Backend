@@ -12,3 +12,7 @@ class DestinationCreate(DestinationBase):
 
 class DestinationRead(DestinationBase):
     id: str
+
+class DestinationBrief(BaseModel):
+    placeId: str
+    name: str
