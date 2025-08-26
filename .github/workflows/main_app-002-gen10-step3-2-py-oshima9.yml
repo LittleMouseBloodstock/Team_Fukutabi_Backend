@@ -27,33 +27,31 @@ jobs:
           fi
           ls -la
 
-      - name: Install zip & unzip
+      - name: Install zip/unzip
         run: |
-          sudo apt-get update
-          sudo apt-get install -y zip unzip
+          sudo apt-get update && sudo apt-get install -y zip unzip
 
-      # backend の「中身だけ」をZIP化（= 展開時に wwwroot 直下へ配置される）
+      # ✅ backend の中身だけを zip（親ディレクトリは使わない）
       - name: Create deployment zip (source only, Oryx will build)
         shell: bash
         run: |
           shopt -s dotglob
-          # 現在地は backend/
-          zip -qr ../release-src.zip * -x "*/__pycache__/*" "*.pyc" "antenv/*"
+          zip -qr release-src.zip * -x "*/__pycache__/*" "*.pyc" "antenv/*"
 
-      # ZIP 直下に requirements.txt があることを検証（なければ失敗）
       - name: Inspect deployment zip (must have requirements.txt at root)
         shell: bash
         run: |
-          unzip -l ../release-src.zip | sed -n '1,200p'
+          unzip -l release-src.zip | sed -n '1,200p'
           echo "---- check requirements.txt at zip root ----"
-          unzip -l ../release-src.zip | awk '{print $4}' | grep -Fx "requirements.txt" \
+          unzip -l release-src.zip | awk '{print $4}' | grep -Fx "requirements.txt" \
             || (echo "requirements.txt is NOT at zip root" && exit 1)
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-package
-          path: ../release-src.zip
+          # ❌ ../ は使わない
+          path: backend/release-src.zip
 
   deploy:
     runs-on: ubuntu-latest
