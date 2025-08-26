@@ -1,47 +1,58 @@
-# Deploy Python FastAPI (backend/) to Azure Web App
-name: Build and deploy Python app to Azure Web App - app-002-gen10-step3-2-py-oshima9
+# Deploy Python FastAPI (backend/) to Azure Web App - Oryx build
+name: Build & deploy FastAPI to Azure Web App (Oryx)
 
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'backend/**'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    defaults:
+      run:
+        working-directory: backend
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ★ CI上では依存インストールしない（Oryxがサーバ側でやる）
-      #   代わりに backend/requirements.txt の存在だけ保証する
       - name: Ensure backend/requirements.txt exists (copy if root-only)
         run: |
-          if [ ! -f backend/requirements.txt ] && [ -f requirements.txt ]; then
-            echo "Copying ./requirements.txt -> backend/requirements.txt"
-            cp requirements.txt backend/requirements.txt
+          if [ ! -f requirements.txt ] && [ -f ../requirements.txt ]; then
+            echo "Copying ../requirements.txt -> backend/requirements.txt"
+            cp ../requirements.txt requirements.txt
           fi
-          echo "Show backend tree:"
-          ls -la backend
+          ls -la
+
+      - name: Install zip tool
+        run: |
+          sudo apt-get update && sudo apt-get install -y zip
+
+      # ✅ backend の中身だけを zip → Azure 展開時に wwwroot 直下に置かれる
+      - name: Create deployment zip (source only, Oryx will build)
+        shell: bash
+        run: |
+          shopt -s dotglob
+          zip -qr ../release-src.zip * -x "*/__pycache__/*" "*.pyc" "antenv/*"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: release-src.zip
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Show tree before deploy (debug)
-        run: |
-          echo "PWD=$(pwd)"
-          ls -la
-          echo "---- backend ----"
-          ls -la backend || true
-          test -f backend/requirements.txt || (echo "ERROR: backend/requirements.txt missing" && exit 1)
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: .
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -49,9 +60,4 @@ jobs:
           app-name: "app-002-gen10-step3-2-py-oshima9"
           slot-name: "Production"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_32DCBC11FA764CD5A832E64BEA3D77BF }}
-          package: ./backend
-       
-
-
-
-
+          package: release-src.zip
