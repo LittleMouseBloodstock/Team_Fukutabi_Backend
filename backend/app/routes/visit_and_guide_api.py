@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Optional, Union
 import traceback
-
+from typing import List
+from sqlalchemy import func
+from app.schemas.destination_schema import DestinationBrief
 from app.db.database import get_db
 from app.db import models
 from app.schemas.visit_record import VisitCreate, VisitRead
@@ -19,6 +21,7 @@ def _get_destination_by_any(db: Session, destination_id: Union[int, str]) -> Opt
 
 @router.post("/", response_model=dict, status_code=201)
 async def create_visit(payload: VisitCreate, db: Session = Depends(get_db)):
+    print("DEBUG /visits payload.userId =", payload.userId)  # デバッグ用
     # 1) 目的地取得
     dest = _get_destination_by_any(db, payload.destinationId)
     if not dest:
@@ -26,7 +29,7 @@ async def create_visit(payload: VisitCreate, db: Session = Depends(get_db)):
 
     # 2) Visit 作成（userId は int|None）
     try:
-        visit = models.VisitHistory(destination_id=dest.id, user_id=payload.userId)
+        visit = models.VisitHistory(destination_id=dest.id, user_id=str(payload.userId) if payload.userId is not None else None)
         db.add(visit)
         db.commit()
         db.refresh(visit)
@@ -49,7 +52,6 @@ async def create_visit(payload: VisitCreate, db: Session = Depends(get_db)):
             user_profile = {
                 "age": getattr(u, "age", None),
                 "gender": getattr(u, "gender", None),
-                "interests": getattr(u, "interests", None),
             }
 
     # 4) ガイド生成（失敗しても必ずフォールバック）
@@ -108,3 +110,32 @@ async def create_visit(payload: VisitCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Guide serialization failed")
 
     return {"visit": visit_out, "guide": guide_out}
+
+# 7) 最近の訪問先一覧（placeId と name のみ）取得
+@router.get("/recent", response_model=List[DestinationBrief])
+def get_recent_destinations(user_id: str, limit: int = 5, db: Session = Depends(get_db)):
+    """
+    ユーザーの最近の訪問先を、目的地ごとに重複排除して新しい順で返す。
+    MySQL でも動くように subquery + join で DISTINCT 相当を実現。
+    """
+    # 各 destination_id の最新 visit を求める
+    sub = (
+        db.query(
+            models.VisitHistory.destination_id.label("dest_id"),
+            func.max(models.VisitHistory.created_at).label("latest")
+        )
+        .filter(models.VisitHistory.user_id == str(user_id))
+        .group_by(models.VisitHistory.destination_id)
+        .subquery()
+    )
+
+    # 最新 visit と Destination を結合して新しい順に
+    rows = (
+        db.query(models.Destination.place_id, models.Destination.name)
+        .join(sub, sub.c.dest_id == models.Destination.id)
+        .order_by(sub.c.latest.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return [DestinationBrief(placeId=pl_id, name=name) for pl_id, name in rows]

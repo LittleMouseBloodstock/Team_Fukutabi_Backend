@@ -35,11 +35,15 @@ def clean_guide_text_for_tts(text: str) -> str:
     text = re.sub(r'\n+', '\n', text)  # 連続改行の整理
     text = re.sub(r'[0-9０-９]{3}-[0-9０-９]{4}', '郵便番号', text)  # 郵便番号除去
 
-    # 座標の潰し方は小数全潰しだと副作用が出るので、行ベースで緯度/経度を潰す例
+    # ✅ 括弧の中にひらがな・カタカナだけがある場合は削除（ふりがな対策）
+    text = re.sub(r'（[ぁ-んァ-ンー]+）', '', text)
+
+    # 座標の潰し方は小数全潰しだと副作用が出るので、行ベースで緯度/経度を潰す
     text = re.sub(r'(?im)^.*(緯度|経度|座標).*\n?', '', text)
 
     text = re.sub(r'\s+', ' ', text)  # 余分なスペースを削除
     return text.strip()
+
 
 
 MEDIA_DIR = os.getenv("MEDIA_ROOT", "./media")
