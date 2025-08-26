@@ -56,6 +56,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://0.0.0.0:3000",
+        "https://app-002-gen10-step3-2-node-oshima9.azurewebsites.net"
         # "https://<your-frontend-domain>"  # ← 本番フロントを追加推奨
     ],
     allow_credentials=True,
