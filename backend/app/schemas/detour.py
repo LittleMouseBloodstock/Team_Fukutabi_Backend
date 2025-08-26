@@ -53,8 +53,38 @@ class DetourSuggestion(BaseModel):
     created_at: Optional[str] = None      # DBの登録日時（レスポンス用）
     categories: List[str] = Field(default_factory=list)  # ← 追加（検索語/分類の表示）
 
-    # Pydantic v2: ORMオブジェクトからの属性取り出しを許可
-    model_config = ConfigDict(from_attributes=True)  # 修正8/21
+    # ✅ 新フィールド（正式）
+    image_url: Optional[str] = Field(
+        default=None,
+        serialization_alias="image_url",   # 出力は image_url で固定
+        validation_alias="image_url",      # 入力も image_url を受け付け
+    )
+
+    # ⚠ 互換フィールド（非推奨・入力のみ受け付けたい場合）
+    # 既存コードが photo_url を詰めていても validation_alias で受け取り、
+    # 値は image_url に集約。出力では使わない想定（= レスポンスに出したくない）。
+    photo_url: Optional[str] = Field(
+        default=None,
+        validation_alias="photo_url",      # 入力時のみ解釈
+        exclude=True,                      # レスポンスに出さない
+        description="Deprecated: use image_url instead.",
+    )
+
+    created_at: Optional[str] = None
+    categories: List[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,  # alias名/フィールド名どちらでも受け付け
+    )
+
+    # 値の集約（photo_url -> image_url）
+    # Pydantic v2 では __init__ 後に model_post_init で集約するのが簡単
+    def model_post_init(self, __context):
+        # image_url が空で、photo_url が入っていたら寄せる
+        if (self.image_url is None) and (self.photo_url):
+            self.image_url = self.photo_url
+
 
 # 🕓 履歴アイテム
 class DetourHistoryItem(BaseModel):
