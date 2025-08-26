@@ -1,47 +1,81 @@
-# Deploy Python FastAPI (backend/) to Azure Web App
-name: Build and deploy Python app to Azure Web App - app-002-gen10-step3-2-py-oshima9
+# Deploy Python FastAPI (backend/) to Azure Web App - zip + bundled venv
+name: Build & deploy FastAPI to Azure Web App (zip + venv)
 
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'backend/**'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ★ CI上では依存インストールしない（Oryxがサーバ側でやる）
-      #   代わりに backend/requirements.txt の存在だけ保証する
       - name: Ensure backend/requirements.txt exists (copy if root-only)
         run: |
-          if [ ! -f backend/requirements.txt ] && [ -f requirements.txt ]; then
-            echo "Copying ./requirements.txt -> backend/requirements.txt"
-            cp requirements.txt backend/requirements.txt
+          if [ ! -f requirements.txt ] && [ -f ../requirements.txt ]; then
+            echo "Copying ../requirements.txt -> backend/requirements.txt"
+            cp ../requirements.txt requirements.txt
           fi
-          echo "Show backend tree:"
-          ls -la backend
+          ls -la
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Build virtualenv and install deps into ./backend/antenv
+        shell: bash
+        run: |
+          python -m venv antenv
+          source antenv/bin/activate
+          python -V
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          # 最低限の起動確認（uvicorn/gunicorn/fastapi が入っているか）
+          python - <<'PY'
+          import fastapi, uvicorn, pkgutil
+          assert pkgutil.find_loader("gunicorn"), "gunicorn not installed"
+          print("deps OK")
+          PY
+
+      - name: Create deployment zip (include antenv)
+        run: |
+          sudo apt-get update && sudo apt-get install -y zip
+          # backend 直下に app/, requirements.txt, antenv/ がある前提で丸ごとZip
+          cd ..
+          zip -qr release.zip backend -x "*/__pycache__/*" "*.pyc"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Show tree before deploy (debug)
-        run: |
-          echo "PWD=$(pwd)"
-          ls -la
-          echo "---- backend ----"
-          ls -la backend || true
-          test -f backend/requirements.txt || (echo "ERROR: backend/requirements.txt missing" && exit 1)
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: .
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -49,9 +83,4 @@ jobs:
           app-name: "app-002-gen10-step3-2-py-oshima9"
           slot-name: "Production"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_32DCBC11FA764CD5A832E64BEA3D77BF }}
-          package: ./backend
-       
-
-
-
-
+          package: release.zip
