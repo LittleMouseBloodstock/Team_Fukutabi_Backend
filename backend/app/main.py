@@ -2,18 +2,11 @@
 from dotenv import load_dotenv
 import pathlib
 import os
-import google.auth
 
-# ✅ 追加：関数として import
-from app.services.google_adc_bootstrap import ensure_adc
-
-#import app.services.google_adc_bootstrap  # ← 追加行：これでADCを自動ブートストラップ
+import app.services.google_adc_bootstrap  # ← 追加行：これでADCを自動ブートストラップ
 # backend/.env を明示的に読み込む
 env_path = pathlib.Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
-
-# ✅ 追加：.env を読んだ“後”に ADC を確定（GCP_SA_JSON_B64 / GCP_SA_JSON / 既存の GAC を優先順でセット）
-ensure_adc()
 
 # .env の変数を取得
 cred_path_raw = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -89,15 +82,7 @@ app.include_router(user_login_api.router)
 # ヘルスチェック
 @app.get("/health")
 def health():
-    try:
-        creds, project = google.auth.default()  # ← ADC を実際に取得
-        return {
-            "status": "ok",
-            "project": project,
-            "cred": os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        }
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
+    return {"status": "ok"}
 
 # ★ 起動時：同期DBの create_all を1回実行（await しない）
 @app.on_event("startup")
