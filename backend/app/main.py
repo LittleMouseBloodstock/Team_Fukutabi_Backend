@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 import pathlib
 import os
 
-import app.services.google_adc_bootstrap  # ← 追加行：これでADCを自動ブートストラップ
 # backend/.env を明示的に読み込む
 env_path = pathlib.Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -119,4 +118,4 @@ def __db_tables():
 # ★ 追加：ルータを登録きたな
 app.include_router(detour_adapter.router)  # → /detour/search が生える
 app.include_router(detour_guide.router)    # → /detour-guide/search が生える
-app.include_router(user_register_api.router)  # ★ 追加：ユーザールーター登録
+app.include_router(user_register_api.router)  # ★ 追加：ユーザールーター登
