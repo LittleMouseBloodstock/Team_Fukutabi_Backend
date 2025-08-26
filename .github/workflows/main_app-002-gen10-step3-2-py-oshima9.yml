@@ -35,7 +35,9 @@ jobs:
       - name: Create deployment zip (source only, Oryx will build)
         shell: bash
         run: |
+          sudo apt-get update && sudo apt-get install -y zip
           shopt -s dotglob
+          # 現在地は backend/
           zip -qr ../release-src.zip * -x "*/__pycache__/*" "*.pyc" "antenv/*"
 
       - name: Upload artifact
@@ -43,6 +45,14 @@ jobs:
         with:
           name: python-package
           path: release-src.zip
+      
+      - name: Inspect deployment zip (must have requirements.txt at root)
+        shell: bash
+        run: |
+          unzip -l ../release-src.zip | sed -n '1,200p'
+          echo "---- check requirements.txt at zip root ----"
+          unzip -l ../release-src.zip | awk '{print $4}' | grep -Fx "requirements.txt" \
+            || (echo "requirements.txt is NOT at zip root" && exit 1)
 
   deploy:
     runs-on: ubuntu-latest
