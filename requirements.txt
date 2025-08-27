@@ -1,0 +1,30 @@
+# --- Framework / ASGI ---
+fastapi==0.110.0
+uvicorn[standard]==0.29.0
+gunicorn==22.0.0
+
+# --- DB / ORM ---
+SQLAlchemy==2.0.29
+PyMySQL==1.1.1
+
+# --- Pydantic / utils ---
+pydantic==2.6.3
+python-dotenv==1.0.1
+httpx==0.27.0
+anyio==4.4.0
+requests==2.32.3
+
+# --- Auth / Forms (使っていれば必須) ---
+passlib[bcrypt]==1.7.4       # ← ここが重要！素の passlib ではなく [bcrypt]
+bcrypt<4.0  # もしくは passlib を最新にしてこの行を外す
+python-jose[cryptography]==3.3.0
+email-validator==2.2.0
+python-multipart==0.0.12
+
+# --- Google / OpenAI ---
+google-cloud-texttospeech==2.27.0
+google-api-python-client==2.146.0
+google-auth==2.34.0
+google-auth-httplib2==0.2.0
+google-cloud-storage==2.18.2
+openai==1.51.2

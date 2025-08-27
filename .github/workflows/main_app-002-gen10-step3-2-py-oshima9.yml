@@ -58,8 +58,8 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y zip
           # backend 直下に app/, requirements.txt, antenv/ がある前提で丸ごとZip
-          cd ..
-          zip -qr release.zip backend -x "*/__pycache__/*" "*.pyc"
+          cd backend
+          zip -qr release.zip . -x "*/__pycache__/*" "*.pyc"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
