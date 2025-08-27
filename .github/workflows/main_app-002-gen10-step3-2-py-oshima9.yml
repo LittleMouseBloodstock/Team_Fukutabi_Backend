@@ -1,5 +1,5 @@
-# Deploy Python FastAPI (backend/) to Azure Web App - Oryx build
-name: Build & deploy FastAPI to Azure Web App (Oryx)
+# Deploy Python FastAPI (backend/) to Azure Web App - zip + bundled venv
+name: Build & deploy FastAPI to Azure Web App (zip + venv)
 
 on:
   push:
@@ -14,7 +14,6 @@ jobs:
     defaults:
       run:
         working-directory: backend
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,31 +26,46 @@ jobs:
           fi
           ls -la
 
-      - name: Install zip/unzip
-        run: |
-          sudo apt-get update && sudo apt-get install -y zip unzip
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-      # ✅ backend の中身だけを zip（親ディレクトリは使わない）
-      - name: Create deployment zip (source only, Oryx will build)
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Build virtualenv and install deps into ./backend/antenv
         shell: bash
         run: |
-          shopt -s dotglob
-          zip -qr release-src.zip * -x "*/__pycache__/*" "*.pyc" "antenv/*"
+          python -m venv antenv
+          source antenv/bin/activate
+          python -V
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          # 最低限の起動確認（uvicorn/gunicorn/fastapi が入っているか）
+          python - <<'PY'
+          import fastapi, uvicorn, pkgutil
+          assert pkgutil.find_loader("gunicorn"), "gunicorn not installed"
+          print("deps OK")
+          PY
 
-      - name: Inspect deployment zip (must have requirements.txt at root)
-        shell: bash
+      - name: Create deployment zip (include antenv)
         run: |
-          unzip -l release-src.zip | sed -n '1,200p'
-          echo "---- check requirements.txt at zip root ----"
-          unzip -l release-src.zip | awk '{print $4}' | grep -Fx "requirements.txt" \
-            || (echo "requirements.txt is NOT at zip root" && exit 1)
+          sudo apt-get update && sudo apt-get install -y zip
+          # backend 直下に app/, requirements.txt, antenv/ がある前提で丸ごとZip
+          cd ..
+          zip -qr release.zip backend -x "*/__pycache__/*" "*.pyc"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-package
-          # ❌ ../ は使わない
-          path: backend/release-src.zip
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -69,4 +83,4 @@ jobs:
           app-name: "app-002-gen10-step3-2-py-oshima9"
           slot-name: "Production"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_32DCBC11FA764CD5A832E64BEA3D77BF }}
-          package: release-src.zip
+          package: release.zip
